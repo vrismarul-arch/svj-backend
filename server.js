@@ -9,7 +9,7 @@ const app = express();
 const corsOptions = {
   origin: [
     "http://localhost:5173",             // Local dev
-    "https://svj-security.netlify.app/",             // Local dev
+    "https://svj-security.netlify.app",             // Local dev
         // Custom domain frontend
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
