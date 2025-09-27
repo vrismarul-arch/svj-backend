@@ -9,9 +9,7 @@ const app = express();
 const corsOptions = {
   origin: [
     "http://localhost:5173",             // Local dev
-    "https://zenovastays.netlify.app",   // Netlify frontend
-    "https://zenovastays.com",
-    "https://ads.zenovastays.com",    // Custom domain frontend
+        // Custom domain frontend
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
