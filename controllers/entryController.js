@@ -2,38 +2,41 @@ const Entry = require("../models/Entry");
 const supabase = require("../config/supabaseClient");
 const multer = require("multer");
 
-// Multer setup for memory storage
+// Multer memory storage for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-/**
- * Add new entry with image uploads
- */
+
 const addEntry = async (req, res) => {
   try {
-    const { name, phoneNumber, email, companyName, requirement } = req.body;
+    const { name, phoneNumber, email, companyName, requirement, requirementType, brands } = req.body;
 
-    if (!name || !phoneNumber || !email || !companyName) {
+    if (!name || !phoneNumber || !email || !companyName || !requirementType) {
       return res.status(400).json({ message: "All required fields must be provided" });
     }
 
+    // Handle images upload to Supabase
     let imageUrls = [];
-
     if (req.files && req.files.length > 0) {
-      // Upload each image to Supabase
       for (const file of req.files) {
         const fileName = `entries/${Date.now()}-${file.originalname}`;
-        const { error: uploadError } = await supabase.storage
-          .from("ads") // bucket name
-          .upload(fileName, file.buffer, {
-            contentType: file.mimetype,
-          });
+        const { error } = await supabase.storage.from("ads").upload(fileName, file.buffer, {
+          contentType: file.mimetype,
+        });
+        if (error) throw error;
 
-        if (uploadError) throw uploadError;
-
-        // Get public URL
         const { data } = supabase.storage.from("ads").getPublicUrl(fileName);
         imageUrls.push(data.publicUrl);
+      }
+    }
+
+    // Parse brands if JSON string
+    let parsedBrands = [];
+    if (brands) {
+      try {
+        parsedBrands = JSON.parse(brands);
+      } catch {
+        parsedBrands = Array.isArray(brands) ? brands : [brands];
       }
     }
 
@@ -43,20 +46,19 @@ const addEntry = async (req, res) => {
       email,
       companyName,
       requirement: requirement || "",
+      requirementType,
+      brands: parsedBrands,
       images: imageUrls,
     });
 
     await newEntry.save();
     res.status(201).json({ message: "Entry saved successfully.", entry: newEntry });
   } catch (error) {
-    console.error("Error adding entry:", error.message);
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-/**
- * Get all entries
- */
 const getAllEntries = async (req, res) => {
   try {
     const entries = await Entry.find().sort({ createdAt: -1 });
@@ -67,15 +69,13 @@ const getAllEntries = async (req, res) => {
   }
 };
 
-/**
- * Update status of entry
- */
+/** Update status of entry */
 const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!["Pending", "Completed", "Rejected"].includes(status)) {
+    if (!["Pending", "Action In Progress", "Completed", "Rejected"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
@@ -89,30 +89,22 @@ const updateStatus = async (req, res) => {
   }
 };
 
-/**
- * Delete entry by ID
- */
+/** Delete entry */
 const deleteEntry = async (req, res) => {
   try {
     const { id } = req.params;
-
     const entry = await Entry.findById(id);
     if (!entry) return res.status(404).json({ message: "Entry not found" });
 
-    // Optional: delete associated images from Supabase
-    if (entry.images && entry.images.length > 0) {
+    // Delete images from Supabase
+    if (entry.images?.length > 0) {
       for (const url of entry.images) {
-        // Extract file path from URL
         const path = url.split("/storage/v1/object/public/ads/")[1];
-        if (path) {
-          const { error } = await supabase.storage.from("ads").remove([path]);
-          if (error) console.error("Error deleting image:", error.message);
-        }
+        if (path) await supabase.storage.from("ads").remove([path]);
       }
     }
 
     await Entry.findByIdAndDelete(id);
-
     res.json({ message: "Entry deleted successfully" });
   } catch (error) {
     console.error("Error deleting entry:", error.message);
@@ -120,13 +112,8 @@ const deleteEntry = async (req, res) => {
   }
 };
 
+module.exports = { addEntry, getAllEntries, updateStatus, deleteEntry, upload };
 
 
-module.exports = { 
-  addEntry, 
-  getAllEntries, 
-  updateStatus, 
-  upload, 
-  deleteEntry 
-};
+
 

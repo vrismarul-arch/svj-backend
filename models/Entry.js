@@ -2,17 +2,39 @@ const mongoose = require("mongoose");
 
 const entrySchema = new mongoose.Schema(
   {
-    name: { type: String, required: true }, // Full name
-    phoneNumber: { type: String, required: true }, // Contact number
-    email: { type: String, required: true }, // Mail ID
-    companyName: { type: String, required: true }, // Company name
-    requirement: { type: String, default: "" }, // Notes / Requirement description
+    name: { type: String, required: true },
+    phoneNumber: { type: String, required: true },
+    email: { type: String, required: true },
+    companyName: { type: String, required: true },
+    requirement: { type: String, default: "" },
 
-    // Store uploaded image URLs from Supabase
+    requirementType: {
+      type: String,
+      enum: [
+        "Boom Barrier",
+        "Swing Barrier",
+        "Flap Barrier",
+        "Turnstile",
+        "Baggage Scanner",
+        "Metal Detector",
+        "Bollard System",
+        "Home Automation",
+      ],
+      required: true,
+    },
+
+    brands: {
+      type: [String],
+      enum: ["Essl", "Came", "ZKT", "Hikvision", "Honeywell"],
+      default: [],
+    },
+
     images: {
-      type: [String], // Array of image URLs
+      type: [String],
       validate: [arrayLimit, "{PATH} exceeds the limit of 5 images"],
     },
+
+    pdfUrl: { type: String, default: "" }, // Added for storing PDF link
 
     status: {
       type: String,
@@ -23,7 +45,6 @@ const entrySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Validation function for max 5 images
 function arrayLimit(val) {
   return val.length <= 5;
 }
